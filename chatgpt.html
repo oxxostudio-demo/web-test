@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/xohozefasi/2/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>碼錶</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+    }
+    .container {
+      text-align: center;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    .time {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    button {
+      font-size: 16px;
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .start { background: #4CAF50; color: white; }
+    .pause { background: #FF9800; color: white; }
+    .reset { background: #F44336; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="time" id="display">00:00:00</div>
+    <button class="start" onclick="startTimer()">開始</button>
+    <button class="pause" onclick="pauseTimer()">暫停</button>
+    <button class="reset" onclick="resetTimer()">重置</button>
+  </div>
+
+  <script>
+    let seconds = 0;
+    let interval = null;
+
+    function updateDisplay() {
+      let hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+      let mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+      let secs = String(seconds % 60).padStart(2, '0');
+      document.getElementById('display').textContent = `${hrs}:${mins}:${secs}`;
+    }
+
+    function startTimer() {
+      if (interval) return;
+      interval = setInterval(() => {
+        seconds++;
+        updateDisplay();
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(interval);
+      interval = null;
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      seconds = 0;
+      updateDisplay();
+    }
+  </script>
+</body>
+</html>

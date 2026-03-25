@@ -1,0 +1,296 @@
+<!doctype html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/xohozefasi/3/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-TW" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>碼錶</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&amp;family=Noto+Sans+TC:wght@300;400;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body, html { margin: 0; padding: 0; }
+
+    .timer-display {
+      font-family: 'Rajdhani', monospace;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-shadow: 0 0 40px rgba(99, 220, 180, 0.5);
+    }
+
+    .ring-outer {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 2px solid rgba(99, 220, 180, 0.15);
+      animation: rotate-ring 8s linear infinite;
+    }
+    .ring-inner {
+      position: absolute;
+      inset: -18px;
+      border-radius: 50%;
+      border: 1px solid rgba(99, 220, 180, 0.08);
+      animation: rotate-ring 14s linear infinite reverse;
+    }
+    @keyframes rotate-ring {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .tick-mark {
+      position: absolute;
+      width: 2px;
+      height: 10px;
+      background: rgba(99, 220, 180, 0.3);
+      border-radius: 1px;
+      transform-origin: 50% 120px;
+    }
+
+    .btn-main {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-main::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.08);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn-main:hover::after { opacity: 1; }
+    .btn-main:active { transform: scale(0.96); }
+
+    .running-pulse {
+      animation: pulse-glow 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(99, 220, 180, 0.2); }
+      50% { box-shadow: 0 0 40px rgba(99, 220, 180, 0.5); }
+    }
+
+    .lap-item {
+      animation: slide-in 0.2s ease;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full" style="background:#0d1117; font-family:'Noto Sans TC', sans-serif;">
+  <main class="w-full h-full flex flex-col items-center justify-center px-4 py-8" style="min-height:100%; background: radial-gradient(ellipse at 50% 0%, rgba(99,220,180,0.06) 0%, transparent 60%), #0d1117;"><!-- Title -->
+   <h1 id="app-title" class="text-2xl font-light mb-10" style="color:rgba(99,220,180,0.7); font-family:'Noto Sans TC', sans-serif; letter-spacing:0.3em;">碼錶</h1><!-- Clock Face -->
+   <div class="relative flex items-center justify-center mb-10"><!-- Tick marks ring -->
+    <div id="tick-ring" class="absolute" style="width:240px;height:240px;">
+    </div><!-- Outer glow rings -->
+    <div class="relative" style="width:240px;height:240px;">
+     <div class="ring-outer"></div>
+     <div class="ring-inner"></div><!-- Main circle -->
+     <div id="clock-face" class="w-full h-full rounded-full flex flex-col items-center justify-center" style="background: radial-gradient(circle at 40% 35%, #1a2332, #0d1520); border: 1.5px solid rgba(99,220,180,0.2); box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);"><!-- Time display -->
+      <div id="time-display" class="timer-display" style="font-size:2.8rem; color:#63dcb4;">
+       00:00<span style="font-size:1.6rem; color:rgba(99,220,180,0.7);">.00</span>
+      </div><!-- Status dot -->
+      <div id="status-dot" class="mt-2 w-2 h-2 rounded-full" style="background:rgba(99,220,180,0.2);"></div>
+     </div>
+    </div>
+   </div><!-- Buttons -->
+   <div class="flex gap-4 mb-8"><!-- Start/Pause button --> <button id="start-pause-btn" class="btn-main rounded-full px-8 py-3 text-sm" style="background: linear-gradient(135deg, #63dcb4, #3ab890); color:#0d1117; min-width:100px;"> <span id="start-pause-label">開始</span> </button> <!-- Reset button --> <button id="reset-btn" class="btn-main rounded-full px-8 py-3 text-sm" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); min-width:100px;"> <span id="reset-label">重置</span> </button> <!-- Lap button --> <button id="lap-btn" class="btn-main rounded-full px-6 py-3 text-sm" style="background: rgba(99,220,180,0.07); border: 1px solid rgba(99,220,180,0.2); color:rgba(99,220,180,0.6); min-width:80px;" disabled> 計次 </button>
+   </div><!-- Lap times -->
+   <div id="lap-list" class="w-full overflow-y-auto" style="max-width:320px; max-height:150px; display:none;">
+    <div class="text-xs mb-2 text-center" style="color:rgba(255,255,255,0.2); letter-spacing:0.2em;">
+     計次紀錄
+    </div>
+    <div id="lap-items"></div>
+   </div>
+  </main>
+  <script>
+  // --- Stopwatch Logic ---
+  let startTime = 0;
+  let elapsed = 0;
+  let timerInterval = null;
+  let isRunning = false;
+  let lapCount = 0;
+  let lastLapTime = 0;
+
+  const timeDisplay = document.getElementById('time-display');
+  const startPauseBtn = document.getElementById('start-pause-btn');
+  const startPauseLabel = document.getElementById('start-pause-label');
+  const resetBtn = document.getElementById('reset-btn');
+  const lapBtn = document.getElementById('lap-btn');
+  const statusDot = document.getElementById('status-dot');
+  const clockFace = document.getElementById('clock-face');
+  const lapList = document.getElementById('lap-list');
+  const lapItems = document.getElementById('lap-items');
+
+  // Build tick marks
+  const tickRing = document.getElementById('tick-ring');
+  for (let i = 0; i < 60; i++) {
+    const tick = document.createElement('div');
+    tick.className = 'tick-mark';
+    const angle = (i / 60) * 360;
+    const isMain = i % 5 === 0;
+    tick.style.cssText = `
+      position: absolute;
+      width: ${isMain ? '2px' : '1px'};
+      height: ${isMain ? '12px' : '7px'};
+      background: rgba(99,220,180,${isMain ? '0.4' : '0.15'});
+      border-radius: 1px;
+      left: 50%;
+      top: ${isMain ? '4px' : '7px'};
+      transform: translateX(-50%) rotate(${angle}deg);
+      transform-origin: 50% ${120 - (isMain ? 4 : 7)}px;
+    `;
+    tickRing.appendChild(tick);
+  }
+
+  function formatTime(ms) {
+    const centiseconds = Math.floor((ms % 1000) / 10);
+    const seconds = Math.floor(ms / 1000) % 60;
+    const minutes = Math.floor(ms / 60000) % 60;
+    const hours = Math.floor(ms / 3600000);
+
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+    const cs = String(centiseconds).padStart(2, '0');
+
+    if (hours > 0) {
+      return `${String(hours).padStart(2,'0')}:${mm}:${ss}<span style="font-size:1.2rem;color:rgba(99,220,180,0.7)">.${cs}</span>`;
+    }
+    return `${mm}:${ss}<span style="font-size:1.6rem;color:rgba(99,220,180,0.7)">.${cs}</span>`;
+  }
+
+  function updateDisplay() {
+    timeDisplay.innerHTML = formatTime(elapsed);
+  }
+
+  function startTimer() {
+    startTime = Date.now() - elapsed;
+    timerInterval = setInterval(() => {
+      elapsed = Date.now() - startTime;
+      updateDisplay();
+    }, 10);
+
+    isRunning = true;
+    startPauseLabel.textContent = window.elementSdk?.config?.pause_label || '暫停';
+    startPauseBtn.style.background = 'linear-gradient(135deg, #e8a87c, #d4875a)';
+    statusDot.style.background = '#63dcb4';
+    statusDot.style.boxShadow = '0 0 6px rgba(99,220,180,0.8)';
+    clockFace.classList.add('running-pulse');
+    lapBtn.disabled = false;
+    lapBtn.style.opacity = '1';
+  }
+
+  function pauseTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isRunning = false;
+    startPauseLabel.textContent = window.elementSdk?.config?.start_label || '開始';
+    startPauseBtn.style.background = 'linear-gradient(135deg, #63dcb4, #3ab890)';
+    statusDot.style.background = 'rgba(99,220,180,0.2)';
+    statusDot.style.boxShadow = 'none';
+    clockFace.classList.remove('running-pulse');
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    elapsed = 0;
+    lapCount = 0;
+    lastLapTime = 0;
+    updateDisplay();
+    lapItems.innerHTML = '';
+    lapList.style.display = 'none';
+    lapBtn.disabled = true;
+    lapBtn.style.opacity = '0.4';
+    startPauseLabel.textContent = window.elementSdk?.config?.start_label || '開始';
+  }
+
+  function addLap() {
+    if (!isRunning) return;
+    lapCount++;
+    const lapTime = elapsed - lastLapTime;
+    lastLapTime = elapsed;
+
+    const item = document.createElement('div');
+    item.className = 'lap-item flex justify-between items-center py-1 px-3 rounded mb-1';
+    item.style.cssText = 'background: rgba(99,220,180,0.05); border: 1px solid rgba(99,220,180,0.1);';
+    item.innerHTML = `
+      <span style="color:rgba(99,220,180,0.5); font-size:0.7rem; letter-spacing:0.1em;">第 ${lapCount} 次</span>
+      <span style="color:rgba(99,220,180,0.8); font-size:0.8rem; font-family:'Rajdhani',monospace; font-weight:600;">${formatRawTime(lapTime)}</span>
+    `;
+    lapItems.insertBefore(item, lapItems.firstChild);
+    lapList.style.display = 'block';
+  }
+
+  function formatRawTime(ms) {
+    const cs = Math.floor((ms % 1000) / 10);
+    const s = Math.floor(ms / 1000) % 60;
+    const m = Math.floor(ms / 60000) % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+  }
+
+  startPauseBtn.addEventListener('click', () => {
+    if (isRunning) pauseTimer(); else startTimer();
+  });
+  resetBtn.addEventListener('click', resetTimer);
+  lapBtn.addEventListener('click', addLap);
+
+  // Initial state
+  lapBtn.style.opacity = '0.4';
+
+  // --- Element SDK ---
+  const defaultConfig = {
+    app_title: '碼錶',
+    start_label: '開始',
+    pause_label: '暫停',
+    reset_label: '重置'
+  };
+
+  window.elementSdk.init({
+    defaultConfig,
+    onConfigChange: async (config) => {
+      document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
+      document.getElementById('reset-label').textContent = config.reset_label || defaultConfig.reset_label;
+      if (!isRunning) {
+        startPauseLabel.textContent = config.start_label || defaultConfig.start_label;
+      } else {
+        startPauseLabel.textContent = config.pause_label || defaultConfig.pause_label;
+      }
+    },
+    mapToCapabilities: (config) => ({
+      recolorables: [
+        {
+          get: () => config.accent_color || '#63dcb4',
+          set: (v) => { window.elementSdk.setConfig({ accent_color: v }); }
+        }
+      ],
+      borderables: [],
+      fontEditable: undefined,
+      fontSizeable: undefined
+    }),
+    mapToEditPanelValues: (config) => new Map([
+      ['app_title', config.app_title || defaultConfig.app_title],
+      ['start_label', config.start_label || defaultConfig.start_label],
+      ['pause_label', config.pause_label || defaultConfig.pause_label],
+      ['reset_label', config.reset_label || defaultConfig.reset_label],
+    ])
+  });
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e1253cc5768f1ec',t:'MTc3NDMyMDE5Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
