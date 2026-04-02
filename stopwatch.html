@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>馬錶 v2</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #F4F7F9;
+      font-family: sans-serif;
+    }
+
+    .container {
+      border: 2px solid #B0BEC5;
+      border-radius: 24px;
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    .circle-wrapper {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 30px;
+    }
+
+    svg {
+      transform: rotate(-90deg);
+    }
+
+    .bg-circle {
+      stroke: #E0E0E0;
+      stroke-width: 10;
+      fill: none;
+    }
+
+    .progress-circle {
+      stroke: url(#gradient);
+      stroke-width: 10;
+      fill: none;
+      stroke-linecap: round;
+      stroke-dasharray: 628;
+      stroke-dashoffset: 628;
+      transition: stroke-dashoffset 0.1s linear;
+    }
+
+    #display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 32px;
+      color: #4A4A4A;
+      letter-spacing: 2px;
+    }
+
+    button {
+      display: block;
+      width: 180px;
+      margin: 10px auto;
+      padding: 12px;
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #startBtn {
+      background: #006064;
+      color: white;
+      box-shadow: 0 0 15px rgba(0, 96, 100, 0.4);
+    }
+
+    #resetBtn {
+      background: #9E9E9E;
+      color: white;
+    }
+
+    #resetBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <div class="circle-wrapper">
+      <svg width="220" height="220">
+        <defs>
+          <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#40E0D0" />
+            <stop offset="100%" stop-color="#007BFF" />
+          </linearGradient>
+        </defs>
+        <circle class="bg-circle" cx="110" cy="110" r="100" />
+        <circle class="progress-circle" cx="110" cy="110" r="100" />
+      </svg>
+      <div id="display">00:00.00</div>
+    </div>
+    
+    <button id="startBtn">開始</button>
+    <button id="resetBtn" disabled>重置</button>
+
+  </div>
+
+  <script>
+    let startTime = 0;
+    let elapsedTime = 0;
+    let timerInterval = null;
+    let isRunning = false;
+
+    const display = document.getElementById('display');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const progressCircle = document.querySelector('.progress-circle');
+
+    const circumference = 2 * Math.PI * 100;
+
+    function formatTime(ms) {
+      let totalSeconds = Math.floor(ms / 1000);
+      let minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      let seconds = String(totalSeconds % 60).padStart(2, '0');
+      let milliseconds = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
+      return `${minutes}:${seconds}.${milliseconds}`;
+    }
+
+    function updateDisplay() {
+      display.textContent = formatTime(elapsedTime);
+
+      let progress = (elapsedTime / 1000) % 60;
+      let offset = circumference - (progress / 60) * circumference;
+      progressCircle.style.strokeDashoffset = offset;
+    }
+
+    function startTimer() {
+      startTime = Date.now() - elapsedTime;
+      timerInterval = setInterval(() => {
+        elapsedTime = Date.now() - startTime;
+        updateDisplay();
+      }, 10);
+    }
+
+    function pauseTimer() {
+      clearInterval(timerInterval);
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (!isRunning && elapsedTime === 0) {
+        startTimer();
+        isRunning = true;
+        startBtn.textContent = '暫停';
+        resetBtn.disabled = false;
+      } else if (isRunning) {
+        pauseTimer();
+        isRunning = false;
+        startBtn.textContent = '繼續';
+      } else {
+        startTimer();
+        isRunning = true;
+        startBtn.textContent = '暫停';
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      pauseTimer();
+      elapsedTime = 0;
+      updateDisplay();
+      isRunning = false;
+      startBtn.textContent = '開始';
+      resetBtn.disabled = true;
+      progressCircle.style.strokeDashoffset = circumference;
+    });
+
+    // ===== 測試案例 =====
+    console.assert(formatTime(0) === '00:00.00', 'Test 1 failed');
+    console.assert(formatTime(1234) === '00:01.23', 'Test 2 failed');
+    console.assert(formatTime(61000) === '01:01.00', 'Test 3 failed');
+    console.assert(formatTime(3661000) === '61:01.00', 'Test 4 failed');
+
+  </script>
+
+</body>
+</html>
