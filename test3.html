@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/kiwovivije/2/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase RTDB 留言板</title>
+    <style>
+        /* 基礎佈局 */
+        body { font-family: sans-serif; padding: 20px; }
+        textarea { width: 100%; height: 100px; margin-bottom: 10px; display: block; }
+        .button-group { margin-bottom: 20px; }
+        button:disabled { cursor: not-allowed; opacity: 0.5; }
+        #data-list { border-top: 1px solid #ccc; padding-top: 10px; }
+        .item { padding: 5px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <h2>留言板</h2>
+    
+    <textarea id="messageInput" placeholder="請輸入內容..."></textarea>
+    
+    <div class="button-group">
+        <button id="submitBtn" disabled>送出</button>
+        <button id="resetBtn" disabled>重填</button>
+    </div>
+
+    <h3>儲存的資料：</h3>
+    <div id="data-list">載入中...</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Firebase 設定資訊 (請替換為你的專案資訊)
+        const firebaseConfig = {
+  apiKey: "AIzaSyCmT_tATVgyMe5VzDPvKLAncVLGkxnL1Ls",
+  authDomain: "test20260421.firebaseapp.com",
+  databaseURL: "https://test20260421-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "test20260421",
+  storageBucket: "test20260421.firebasestorage.app",
+  messagingSenderId: "1096332629243",
+  appId: "1:1096332629243:web:e614c9cccbab1204bc0c5e"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+
+        // 初始化 App Check (使用 reCAPTCHA v3)
+        // 注意：這裡的 siteKey 需填入你在 reCAPTCHA 管理後台申請的「網站金鑰」
+        const appCheck = initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider('6LehTsIsAAAAACkcW1N-NxeyKMj_pH-tqgr6rF0G'),
+            isTokenAutoRefreshEnabled: true
+        });
+
+        // 初始化 Realtime Database
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        // DOM 元素
+        const messageInput = document.getElementById('messageInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dataList = document.getElementById('data-list');
+
+        // 監聽輸入欄位，控制按鈕狀態
+        messageInput.addEventListener('input', () => {
+            const hasValue = messageInput.value.trim().length > 0;
+            submitBtn.disabled = !hasValue;
+            resetBtn.disabled = !hasValue;
+        });
+
+        // 送出按鈕事件
+        submitBtn.addEventListener('click', () => {
+            const content = messageInput.value.trim();
+            if (content) {
+                push(messagesRef, {
+                    text: content,
+                    timestamp: Date.now()
+                }).then(() => {
+                    messageInput.value = '';
+                    submitBtn.disabled = true;
+                    resetBtn.disabled = true;
+                }).catch((error) => {
+                    console.error("儲存失敗：", error);
+                    alert("儲存失敗，請檢查 App Check 或權限設定");
+                });
+            }
+        });
+
+        // 重填按鈕事件
+        resetBtn.addEventListener('click', () => {
+            messageInput.value = '';
+            submitBtn.disabled = true;
+            resetBtn.disabled = true;
+        });
+
+        // 監聽資料庫變動，即時更新清單
+        onValue(messagesRef, (snapshot) => {
+            dataList.innerHTML = '';
+            const data = snapshot.val();
+            if (data) {
+                // 將物件轉換為陣列並反轉，讓最新的顯示在上面
+                Object.values(data).reverse().forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = 'item';
+                    div.textContent = msg.text;
+                    dataList.appendChild(div);
+                });
+            } else {
+                dataList.textContent = '目前尚無資料';
+            }
+        });
+    </script>
+</body>
+</html>
