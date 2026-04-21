@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/doxuzokewi/3/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase RTDB 留言板</title>
+    
+    <!-- 載入 reCAPTCHA Enterprise API -->
+    <script src="https://www.google.com/recaptcha/enterprise.js?render=6LehTsIsAAAAACKcW1N-NxeyKMj_pH-tqgr6rF0G"></script>
+    
+    <!-- 載入 Firebase SDK (模組化版本) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
+
+        // --- Firebase 配置 ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyCmT_tATVgyMe5VzDPvKLAncVLGkxnL1Ls",
+  authDomain: "test20260421.firebaseapp.com",
+  databaseURL: "https://test20260421-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "test20260421",
+  storageBucket: "test20260421.firebasestorage.app",
+  messagingSenderId: "1096332629243",
+  appId: "1:1096332629243:web:e614c9cccbab1204bc0c5e"
+        };
+
+        // 初始化 Firebase 應用程式
+        const app = initializeApp(firebaseConfig);
+        
+        // --- 初始化生產環境 App Check ---
+        const SITE_KEY = '6LehTsIsAAAAACKcW1N-NxeyKMj_pH-tqgr6rF0G';
+        const appCheck = initializeAppCheck(app, {
+            provider: new ReCaptchaEnterpriseProvider(SITE_KEY),
+            isTokenAutoRefreshEnabled: true // 自動刷新權杖以維持連線有效性
+        });
+
+        // 取得資料庫實例
+        const db = getDatabase(app);
+        const dataRef = ref(db, 'messages');
+
+        // --- DOM 元素引用 ---
+        const messageInput = document.getElementById('messageInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dataList = document.getElementById('dataList');
+        const statusMsg = document.getElementById('statusMsg');
+
+        // --- 按鈕啟用/禁用邏輯 ---
+        messageInput.addEventListener('input', () => {
+            const hasValue = messageInput.value.trim().length > 0;
+            submitBtn.disabled = !hasValue;
+            resetBtn.disabled = !hasValue;
+        });
+
+        // --- 重填按鈕邏輯 ---
+        resetBtn.addEventListener('click', () => {
+            messageInput.value = '';
+            submitBtn.disabled = true;
+            resetBtn.disabled = true;
+            statusMsg.textContent = "";
+        });
+
+        // --- 送出按鈕邏輯 ---
+        submitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            statusMsg.textContent = "正在發送...";
+            submitBtn.disabled = true;
+
+            try {
+                // 強制檢查一次 App Check Token 是否能正常獲取
+                await getToken(appCheck);
+
+                const newMessageRef = push(dataRef);
+                await set(newMessageRef, {
+                    content: text,
+                    timestamp: Date.now()
+                });
+
+                messageInput.value = '';
+                resetBtn.disabled = true;
+                statusMsg.textContent = "傳送成功！";
+                setTimeout(() => statusMsg.textContent = "", 3000);
+
+            } catch (error) {
+                console.error("發送失敗：", error);
+                statusMsg.textContent = "發送失敗，請確認網路連線或驗證權限。";
+                submitBtn.disabled = false;
+            }
+        });
+
+        // --- 即時監聽資料庫資料 ---
+        onValue(dataRef, (snapshot) => {
+            dataList.innerHTML = '';
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const items = Object.entries(data).reverse();
+                items.forEach(([key, value]) => {
+                    const li = document.createElement('li');
+                    li.style.padding = "10px";
+                    li.style.borderBottom = "1px solid #ddd";
+                    li.textContent = value.content;
+                    dataList.appendChild(li);
+                });
+            } else {
+                dataList.innerHTML = '<li>目前無任何訊息</li>';
+            }
+        }, (error) => {
+            console.error("資料讀取權限錯誤：", error);
+            dataList.innerHTML = `<li style="color:red">無法讀取資料：驗證失敗。</li>`;
+        });
+    </script>
+</head>
+<body>
+
+    <h1>Firebase 留言板</h1>
+
+    <div>
+        <textarea id="messageInput" rows="5" cols="40" placeholder="請在此輸入訊息內容..."></textarea>
+    </div>
+    
+    <div style="margin-top: 10px;">
+        <button id="submitBtn" disabled>送出留言</button>
+        <button id="resetBtn" disabled>清除內容</button>
+    </div>
+
+    <p id="statusMsg" style="color: #2c3e50; font-weight: bold;"></p>
+
+    <hr>
+
+    <h3>所有留言：</h3>
+    <ul id="dataList" style="list-style: none; padding-left: 0; max-width: 400px;">
+        <li>載入中...</li>
+    </ul>
+
+</body>
+</html>
