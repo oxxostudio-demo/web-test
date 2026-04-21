@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/doxuzokewi/2/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Realtime Database 留言板</title>
+</head>
+<body>
+
+    <h1>Firebase 留言板</h1>
+
+    <!-- 輸入區域 -->
+    <div>
+        <textarea id="messageInput" rows="5" cols="50" placeholder="請輸入內容..."></textarea>
+    </div>
+    
+    <div style="margin-top: 10px;">
+        <button id="submitBtn" disabled>送出</button>
+        <button id="resetBtn" disabled>重填</button>
+    </div>
+
+    <hr>
+
+    <!-- 資料顯示區域 -->
+    <h2>已儲存的資料</h2>
+    <ul id="dataList">
+        <li>載入中...</li>
+    </ul>
+
+    <!-- Firebase SDK 導入 (使用 CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
+        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // --- Firebase 配置 ---
+        // 請將此處替換為您真正的 Firebase 專案配置
+        const firebaseConfig = {
+  apiKey: "AIzaSyCmT_tATVgyMe5VzDPvKLAncVLGkxnL1Ls",
+  authDomain: "test20260421.firebaseapp.com",
+  databaseURL: "https://test20260421-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "test20260421",
+  storageBucket: "test20260421.firebasestorage.app",
+  messagingSenderId: "1096332629243",
+  appId: "1:1096332629243:web:e614c9cccbab1204bc0c5e"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+
+        // --- 初始化 App Check ---
+        // 注意：請將 YOUR_RECAPTCHA_ENTERPRISE_SITE_KEY 替換為您的 Site Key
+        const appCheck = initializeAppCheck(app, {
+            provider: new ReCaptchaEnterpriseProvider('6LehTsIsAAAAACkcW1N-NxeyKMj_pH-tqgr6rF0G'),
+            isTokenAutoRefreshEnabled: true
+        });
+
+        // 初始化 Realtime Database
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        // --- DOM 元素引用 ---
+        const messageInput = document.getElementById('messageInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dataList = document.getElementById('dataList');
+
+        // --- 邏輯：檢查輸入欄位並切換按鈕狀態 ---
+        messageInput.addEventListener('input', () => {
+            const hasContent = messageInput.value.trim().length > 0;
+            submitBtn.disabled = !hasContent;
+            resetBtn.disabled = !hasContent;
+        });
+
+        // --- 邏輯：重填按鈕 ---
+        resetBtn.addEventListener('click', () => {
+            messageInput.value = '';
+            submitBtn.disabled = true;
+            resetBtn.disabled = true;
+        });
+
+        // --- 邏輯：送出資料 ---
+        submitBtn.addEventListener('click', async () => {
+            const content = messageInput.value.trim();
+            if (!content) return;
+
+            try {
+                // 停用按鈕防止重複送出
+                submitBtn.disabled = true;
+                
+                const newMessageRef = push(messagesRef);
+                await set(newMessageRef, {
+                    content: content,
+                    timestamp: Date.now()
+                });
+
+                // 送出成功後清空
+                messageInput.value = '';
+                resetBtn.disabled = true;
+                console.log("資料儲存成功！");
+            } catch (error) {
+                console.error("儲存失敗：", error);
+                alert("儲存失敗，請檢查主控台錯誤訊息。可能是 App Check 驗證未通過。");
+                submitBtn.disabled = false;
+            }
+        });
+
+        // --- 邏輯：即時監聽資料變動 ---
+        onValue(messagesRef, (snapshot) => {
+            dataList.innerHTML = ''; // 清空現有列表
+            const data = snapshot.val();
+
+            if (!data) {
+                dataList.innerHTML = '<li>目前沒有資料</li>';
+                return;
+            }
+
+            // 將物件轉換為陣列並排序（最新在最上面）
+            const items = Object.entries(data).reverse();
+            
+            items.forEach(([key, value]) => {
+                const li = document.createElement('li');
+                const date = new Date(value.timestamp).toLocaleString();
+                li.textContent = `[${date}] ${value.content}`;
+                dataList.appendChild(li);
+            });
+        }, (error) => {
+            console.error("讀取失敗：", error);
+            dataList.innerHTML = '<li>無法載入資料，請檢查權限設定。</li>';
+        });
+
+    </script>
+
+</body>
+</html>
